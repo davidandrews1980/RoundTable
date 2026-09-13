@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { AdSlot } from "@/components/ad-slot";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Mark } from "@/lib/logo";
@@ -28,6 +29,9 @@ function Home() {
               <ArrowRight className="size-4" />
             </Link>
           </Button>
+        </div>
+        <div className="mt-12 max-w-xl">
+          <AdSlot slot="home-mid" label="House ad until this slot sells" />
         </div>
         <div className="mt-16 flex items-start gap-3 text-sm text-muted">
           <Mark className="mt-0.5 size-5 shrink-0" />

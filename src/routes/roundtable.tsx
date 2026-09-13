@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { AppShell, AuthSkeleton } from "@/components/app-shell";
+import { AdSlot } from "@/components/ad-slot";
 import { RoundtableBriefing } from "@/components/briefing";
 import { Button } from "@/components/ui/button";
 import { RedirectToSignIn } from "@/lib/auth/gates";
@@ -88,6 +89,9 @@ function RoundtableGate() {
         Each sitting is a private table. Seat the models you have keys for, put
         a question in the center, and convene.
       </p>
+      <div className="mt-6">
+        <AdSlot slot="sittings-top" />
+      </div>
       <div className="mt-8 space-y-3">
         {tables.data && tables.data.length === 0 ? (
           <p className="rounded-[var(--radius-lg)] border border-dashed border-border px-5 py-10 text-sm text-muted">
