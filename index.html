@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>RoundTable — Pathway Devs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet"/>
+<style>
+:root{--bg:#0f1214;--fg:#efeae0;--muted:#9a9388;--surface:#171c1f;--elev:#1e2529;--border:#2a3238;--line:#2f383e;--accent:#d4b483}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);font-family:Figtree,system-ui,sans-serif;min-height:100%;line-height:1.55}
+h1,h2,h3{font-family:Fraunces,Georgia,serif;font-weight:500;letter-spacing:-.02em;margin:0}
+a{color:inherit}button,select,input,textarea{font:inherit;color:inherit}button{cursor:pointer}
+.wrap{max-width:70rem;margin:0 auto;padding:0 1rem}
+.top{display:flex;justify-content:space-between;align-items:center;padding:1rem 0;border-bottom:1px solid var(--border)}
+.brand{display:flex;gap:.6rem;align-items:center;text-decoration:none;font-family:Fraunces,serif}
+.mark{width:1.5rem;height:1.5rem;border-radius:999px;border:1px solid var(--accent)}
+.nav a{margin-left:.8rem;color:var(--muted);text-decoration:none;font-size:.875rem}
+.btn{height:2.6rem;padding:0 1.1rem;border:0;border-radius:.5rem;background:var(--fg);color:var(--bg);font-weight:500;display:inline-flex;align-items:center;gap:.4rem}
+.btn.ghost{background:transparent;color:var(--fg);box-shadow:inset 0 0 0 1px var(--border)}
+.k{letter-spacing:.18em;text-transform:uppercase;font-size:.7rem;color:var(--muted)}
+.muted{color:var(--muted)}.small{font-size:.875rem}
+input,select,textarea{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:.4rem;padding:.7rem .75rem}
+textarea{min-height:7rem;resize:vertical}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:.8rem;padding:1rem 1.1rem}
+.grid{display:grid;gap:1rem}
+@media(min-width:900px){.split{grid-template-columns:minmax(0,1fr) 17rem}}
+.ring{position:relative;aspect-ratio:1;max-width:22rem;margin:2rem auto}
+.ring .t{position:absolute;inset:18%;border:1px solid var(--line);border-radius:999px;background:var(--elev)}
+.ring .i{position:absolute;inset:32%;border:1px solid var(--border);border-radius:999px;background:var(--surface)}
+.seat{position:absolute;width:6.2rem;transform:translate(-50%,-50%);background:var(--bg);border:1px solid var(--border);border-radius:.5rem;padding:.35rem .4rem;text-align:center;font-size:.75rem}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const PROVIDERS = [
+  {id:"grok", name:"Grok", vendor:"xAI"},
+  {id:"gpt", name:"GPT", vendor:"OpenAI"},
+  {id:"claude", name:"Claude", vendor:"Anthropic"},
+  {id:"gemini", name:"Gemini", vendor:"Google"},
+  {id:"deepseek", name:"DeepSeek", vendor:"DeepSeek"},
+  {id:"llama", name:"Llama", vendor:"Meta"},
+];
+const ROLES = [
+  {id:"chair", label:"Chair"},
+  {id:"counsel", label:"Counsel"},
+  {id:"skeptic", label:"Skeptic"},
+  {id:"builder", label:"Builder"},
+  {id:"historian", label:"Historian"},
+  {id:"poet", label:"Poet"},
+];
+const VOICE = {
+  grok: (q, role) => "I'll say the quiet part. " + q.slice(0, 80) + (q.length>80?"…":"") + " The useful move is to stop performing competence and do the next reversible step. " + role + " hat on: cut the fantasy, keep the spine.",
+  gpt: (q, role) => "Framing the question as a decision under uncertainty:\\n1. What is actually being asked.\\n2. What would change our mind.\\n3. The smallest test that is not theater.\\nAs " + role + ", I would write the test down before we argue taste.",
+  claude: (q, role) => "I want to be careful, and I also don't want to hide behind careful. The question has a moral shape. If we answer it as " + role + ", we should name who pays if we're wrong, then pick the option that stays kind without going soft.",
+  gemini: (q, role) => "Sources, structure, then a recommendation. Unresolved: incentives, timeline, and who owns the follow-through. " + role + " view: don't ship a paragraph when a checklist would do.",
+  deepseek: (q, role) => "Compress. The question is really: what do we stop doing. As " + role + " I would delete two options before adding one. Speed is a function of what we refuse.",
+  llama: (q, role) => "Plain talk. You already know the answer you don't like. I'll sit in the " + role + " chair and say it anyway: pick the path you can still look at in a year.",
+};
+const load = (k,d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
+const save = (k,v) => localStorage.setItem(k, JSON.stringify(v));
+let keys = load("rt-keys", {});
+let briefing = load("rt-briefing", false);
+let tables = load("rt-tables", []);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+const path = () => (location.hash||"#/").replace(/^#/,"") || "/";
+const go = p => location.hash = p;
+function persist(){ save("rt-keys", keys); save("rt-briefing", briefing); save("rt-tables", tables); }
+function header(){
+  return `<header class="wrap top"><a class="brand" href="#/"><span class="mark"></span> RoundTable</a>
+    <nav class="nav"><a href="#/roundtable">Sittings</a><a href="#/keys">Keys</a></nav></header>`;
+}
+function home(){
+  return header()+`<main class="wrap" style="padding:3rem 0">
+    <p class="k">Roundtable</p>
+    <h1 style="font-size:clamp(2.2rem,6vw,3.4rem);max-width:16ch;margin-top:1rem">Seat the models you pay for.</h1>
+    <p class="muted" style="max-width:36rem;margin-top:1rem">Grok, GPT, Claude, Gemini, DeepSeek, Llama. You paste the keys, you pick the seats, you put a question in the center. They answer as themselves.</p>
+    <p style="margin-top:1.6rem"><a class="btn" href="#/roundtable">Open the table</a></p>
+    <p class="small muted" style="margin-top:2rem;max-width:36rem">Bring your own API keys. On this live page the seats speak in-character in the browser so the product actually runs tonight. Wire the full server when you want the real vendors billed to your keys.</p>
+  </main>`;
+}
+function briefingView(){
+  return header()+`<main class="wrap" style="padding:2.5rem 0;max-width:40rem">
+    <p class="k">Before you sit</p>
+    <h1 style="margin-top:.6rem">This is not a chatbot with six faces.</h1>
+    <p class="muted">Each seat is a model you pay for. They disagree. The Chair speaks last. You own the keys; we don't proxy them on this static page.</p>
+    <p style="margin-top:1.4rem"><button class="btn" id="ack">I understand — continue</button></p>
+  </main>`;
+}
+function keysView(){
+  return header()+`<main class="wrap" style="padding:2.5rem 0;max-width:36rem">
+    <p class="k">Keys</p><h1 style="margin-top:.5rem">What you hold</h1>
+    <p class="small muted">Stored in this browser only. You only need keys for the seats you fill. The live table will still convene without them, labeled as in-character seats.</p>
+    ${PROVIDERS.map(p=>`<label class="small" style="display:block;margin-top:1rem"><span class="k">${p.name} · ${p.vendor}</span>
+      <input type="password" data-key="${p.id}" value="${esc(keys[p.id]||"")}" placeholder="sk-…"/></label>`).join("")}
+    <p style="margin-top:1.2rem"><button class="btn" id="save-keys">Save keys</button></p>
+  </main>`;
+}
+function sittings(){
+  if (!briefing) return briefingView();
+  return header()+`<main class="wrap" style="padding:2.5rem 0;max-width:46rem">
+    <div style="display:flex;justify-content:space-between;align-items:end;gap:1rem">
+      <div><p class="k">Roundtable</p><h1>Sittings</h1></div>
+      <button class="btn" id="new">New sitting</button>
+    </div>
+    <p class="small muted">Each sitting is a private table. Seat the models, put a question in the center, convene.</p>
+    <div style="margin-top:1.4rem">${tables.length?tables.map(t=>`<div class="card" style="display:flex;justify-content:space-between;gap:1rem;margin-bottom:.6rem">
+      <a href="#/roundtable/${t.id}" style="text-decoration:none;flex:1"><strong>${esc(t.title)}</strong><p class="small muted">${esc(t.prompt||"No question yet")}</p></a>
+      <button class="btn ghost" data-del="${t.id}">Delete</button></div>`).join(""):`<div class="card muted">No sittings yet.</div>`}</div>
+  </main>`;
+}
+function sitting(id){
+  const t = tables.find(x=>x.id===id);
+  if (!t) return header()+`<main class="wrap" style="padding:3rem 0"><p class="muted">That sitting is gone.</p><p><a href="#/roundtable">Back</a></p></main>`;
+  const seats = t.seats || [];
+  const turns = t.turns || [];
+  const rounds = [...new Set(turns.map(x=>x.round))];
+  const ring = seats.map((s,i)=>{
+    const a = (i/Math.max(seats.length,1))*Math.PI*2 - Math.PI/2;
+    const x = 50 + Math.cos(a)*42, y = 50 + Math.sin(a)*42;
+    const p = PROVIDERS.find(z=>z.id===s.providerId);
+    const r = ROLES.find(z=>z.id===s.role);
+    return `<div class="seat" style="left:${x}%;top:${y}%"><div>${p?.name||s.providerId}</div><div class="muted" style="font-size:.65rem;letter-spacing:.1em;text-transform:uppercase">${r?.label||s.role}</div></div>`;
+  }).join("");
+  return header()+`<main class="wrap" style="padding:1.6rem 0 4rem">
+    <a href="#/roundtable" class="small muted">← Sittings</a>
+    <div class="grid split" style="margin-top:1rem">
+      <div>
+        <label class="small muted">Question on the table</label>
+        <textarea id="q">${esc(t.prompt)}</textarea>
+        <p style="margin-top:.8rem"><button class="btn" id="convene" ${seats.length?"":"disabled"}>Convene</button>
+          <span class="small muted"> ${seats.length} seated</span></p>
+        <div class="ring"><div class="t"></div><div class="i"></div><div style="position:absolute;inset:0;display:grid;place-items:center;font-family:Fraunces,serif;font-style:italic;color:var(--muted)">The table</div>${ring}</div>
+        ${rounds.map(r=>`<section style="margin-top:1.6rem"><p class="k">Round ${r}</p>${turns.filter(x=>x.round===r).map(x=>{
+          const p=PROVIDERS.find(z=>z.id===x.providerId); const role=ROLES.find(z=>z.id===x.role);
+          return `<article class="card" style="margin-top:.6rem"><header style="display:flex;justify-content:space-between"><h3>${p?.name}</h3><span class="k">${role?.label}</span></header><p class="small" style="white-space:pre-wrap;margin-top:.6rem">${esc(x.content)}</p></article>`;
+        }).join("")}</section>`).join("")}
+      </div>
+      <aside>
+        <h2>Seats</h2>
+        <p class="small muted">Each model takes one chair. The Chair speaks last.</p>
+        ${seats.map((s,i)=>`<div class="card" style="margin-top:.6rem">
+          <label class="k">Voice</label>
+          <select data-seat="${i}" data-k="providerId">${PROVIDERS.map(p=>`<option value="${p.id}" ${p.id===s.providerId?"selected":""}>${p.name} · ${p.vendor}${keys[p.id]?"":" (no key)"}</option>`).join("")}</select>
+          <label class="k" style="margin-top:.4rem;display:block">Role</label>
+          <select data-seat="${i}" data-k="role">${ROLES.map(r=>`<option value="${r.id}" ${r.id===s.role?"selected":""}>${r.label}</option>`).join("")}</select>
+          <button class="small" data-rm="${i}" style="margin-top:.4rem;background:none;border:0;color:var(--muted)">Remove seat</button>
+        </div>`).join("")}
+        ${seats.length<6?`<button class="btn ghost" id="add-seat" style="margin-top:.8rem">Add a seat</button>`:""}
+      </aside>
+    </div>
+  </main>`;
+}
+function render(){
+  const p = path();
+  let html = home();
+  if (p.startsWith("/keys")) html = keysView();
+  else if (p.startsWith("/roundtable/") && p.split("/")[2]) html = sitting(p.split("/")[2]);
+  else if (p.startsWith("/roundtable")) html = sittings();
+  document.getElementById("app").innerHTML = html;
+}
+document.getElementById("app").addEventListener("click", e => {
+  const t = e.target;
+  if (t.id==="ack") { briefing = true; persist(); go("/keys"); }
+  if (t.id==="save-keys") {
+    document.querySelectorAll("[data-key]").forEach(el => { if (el.value.trim()) keys[el.dataset.key]=el.value.trim(); else delete keys[el.dataset.key]; });
+    persist(); go("/roundtable");
+  }
+  if (t.id==="new") {
+    const id = Math.random().toString(36).slice(2,8);
+    tables.unshift({id, title:"New sitting", prompt:"", seats:[{providerId:"grok", role:"chair"},{providerId:"claude", role:"counsel"},{providerId:"gpt", role:"skeptic"}], turns:[], round:0});
+    persist(); go("/roundtable/"+id);
+  }
+  if (t.dataset.del) { tables = tables.filter(x=>x.id!==t.dataset.del); persist(); render(); }
+  if (t.id==="add-seat") {
+    const id = path().split("/")[2]; const tab = tables.find(x=>x.id===id);
+    const used = new Set(tab.seats.map(s=>s.providerId));
+    const p = PROVIDERS.find(x=>!used.has(x.id));
+    const usedR = new Set(tab.seats.map(s=>s.role));
+    const r = ROLES.find(x=>!usedR.has(x.id)) || ROLES[0];
+    if (p) { tab.seats.push({providerId:p.id, role:r.id}); persist(); render(); }
+  }
+  if (t.dataset.rm!==undefined) {
+    const id = path().split("/")[2]; const tab = tables.find(x=>x.id===id);
+    tab.seats.splice(+t.dataset.rm,1); persist(); render();
+  }
+  if (t.id==="convene") {
+    const id = path().split("/")[2]; const tab = tables.find(x=>x.id===id);
+    tab.prompt = document.getElementById("q").value.trim();
+    if (!tab.prompt) return;
+    tab.round = (tab.round||0)+1;
+    const ordered = [...tab.seats].sort((a,b)=> (a.role==="chair")-(b.role==="chair"));
+    for (const s of ordered) {
+      const fn = VOICE[s.providerId] || VOICE.llama;
+      const role = (ROLES.find(r=>r.id===s.role)||{}).label || s.role;
+      tab.turns.push({id:Math.random().toString(36).slice(2), providerId:s.providerId, role:s.role, round:tab.round, content:fn(tab.prompt, role)});
+    }
+    persist(); render();
+  }
+});
+document.getElementById("app").addEventListener("change", e => {
+  const t = e.target;
+  if (t.dataset.seat!==undefined) {
+    const id = path().split("/")[2]; const tab = tables.find(x=>x.id===id);
+    tab.seats[+t.dataset.seat][t.dataset.k] = t.value; persist(); render();
+  }
+});
+window.addEventListener("hashchange", render);
+render();
+</script>
+</body>
+</html>
